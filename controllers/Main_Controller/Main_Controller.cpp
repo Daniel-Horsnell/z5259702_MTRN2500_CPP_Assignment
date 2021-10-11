@@ -32,6 +32,7 @@ void menu(webots::Robot& robot, int timeStep) {
     //setting cooldown to 0
     i = 0;
       switch(key) {
+        // Case for pressing i or I.
         case 73 : case 65609 :
           std::cout << "This is a simulation for MTRN2500 Cafe.\n";
           std::cout << "Press [I] to reprint the commands.\n";
@@ -39,14 +40,17 @@ void menu(webots::Robot& robot, int timeStep) {
           std::cout << "Press [A] to enter the auto mode.\n";
           std::cout << "Press [Q] to quit all controllers." << std::endl;
           break;
+        // Case for pressing r or R.
         case 82 : case 65618 :
           std::cout << "Entering remote control mode" << std::endl;
           //remoteControl();
           break;
+        // Case for pressing a or A.
         case 65 : case 65601 :
           std::cout << "Entering auto mode." << std::endl;
           //Auto;
           break;
+        // Case for pressing q or Q.
         case 81 : case 65617 :
           std::cout << "Quiting" << std::endl;
           break;
