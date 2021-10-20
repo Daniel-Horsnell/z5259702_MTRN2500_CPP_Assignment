@@ -1,4 +1,4 @@
-// File:          Staff_controller.cpp
+// File:          customer_controller.cpp
 // Date:
 // Description:
 // Author:
@@ -20,23 +20,23 @@ using namespace webots;
 
 int main(int argc, char **argv) {
 
-  auto staff = Staff(315, 314, 316);
+  auto customer = Customer(87, 65, 68);
 
-  int timeStep = (int)staff.getBasicTimeStep();
+  int timeStep = (int)customer.getBasicTimeStep();
 
-  auto receiver = static_cast<webots::Receiver*>(staff.getReceiver("receiver"));
+  auto receiver = static_cast<webots::Receiver*>(customer.getReceiver("receiver"));
   receiver->enable(timeStep);
-  receiver->setChannel(5);
+  receiver->setChannel(4);
 
-  while (staff.step(timeStep) != -1) {
+  while (customer.step(timeStep) != -1) {
       // Queue is not empty.
       if (receiver->getQueueLength() > 0) {
           auto message =
               static_cast<std::string>((static_cast<const char*>(receiver->getData())));
           receiver->nextPacket();  // Pops queue.
           std::cout << "I have recevied: " << message << std::endl;
-          if(message == "5R") {
-            staff.RemoteMode(timeStep);
+          if(message == "4R") {
+            customer.RemoteMode(timeStep);
             break;
           }
       }
@@ -47,6 +47,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
-
-
