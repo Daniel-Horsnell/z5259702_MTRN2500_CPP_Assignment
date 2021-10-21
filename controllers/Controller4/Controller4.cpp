@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   receiver->setChannel(4);
 
   while (customer.step(timeStep) != -1) {
-      // Queue is not empty.
+      
       if (receiver->getQueueLength() > 0) {
           auto message =
               static_cast<std::string>((static_cast<const char*>(receiver->getData())));
@@ -38,8 +38,13 @@ int main(int argc, char **argv) {
           if(message == "4R") {
             customer.RemoteMode(timeStep);
             break;
+          } else if (message == "exit") {
+            return 0;
+          } else if (message == "A") {
+            customer.autoMode();
           }
       }
+
   };
 
 

@@ -19,13 +19,6 @@ int main(int argc, char **argv) {
   // create the Supervisor instance.
   auto director = Director();
 
-  // get the time step of the current world.
-  
-
-    
-    // }
-  // }
-  // making menu.
   director.menu();
     
   return 0;

@@ -20,26 +20,24 @@ using namespace webots;
 
 int main(int argc, char **argv) {
 
-  auto customer = Customer(87, 65, 68);
+  auto customer1 = Customer(87, 65, 68, 1);
 
-  int timeStep = (int)customer.getBasicTimeStep();
+  int timeStep = (int)customer1.getBasicTimeStep();
 
-  auto receiver = static_cast<webots::Receiver*>(customer.getReceiver("receiver"));
-  receiver->enable(timeStep);
-  receiver->setChannel(1);
 
-  while (customer.step(timeStep) != -1) {
+  while (customer1.step(timeStep) != -1) {
       // Queue is not empty.
-      if (receiver->getQueueLength() > 0) {
-          auto message =
-              static_cast<std::string>((static_cast<const char*>(receiver->getData())));
-          receiver->nextPacket();  // Pops queue.
-          std::cout << "I have recevied: " << message << std::endl;
-          if(message == "1R") {
-            customer.RemoteMode(timeStep);
-            break;
-          }
-      }
+    
+    std::string message = customer1.getMessage();
+      if(message == "1R") {
+        customer1.RemoteMode(timeStep);
+         break;
+        } else if (message == "exit") {
+          return 0;
+        } else if (message == "A") {
+          customer1.autoMode();
+        }
+
   };
 
 
