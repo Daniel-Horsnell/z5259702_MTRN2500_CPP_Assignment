@@ -35,7 +35,7 @@ class Person : public webots::Robot {
     void RemoteMode(int timeStep);
     auto sendMessageAll(std::string message);
     auto sendMessage(std::string message, int channel);
-    auto getMessage();
+    std::string getMessage();
 
     protected:
     int mForward;
@@ -81,7 +81,7 @@ auto Person::sendMessageAll(std::string message) {
   return;
 }
 
-auto Person::getMessage() {
+std::string Person::getMessage() {
   mReceiver->setChannel(mChannel);
   mReceiver->enable(mTimeStep);
   std::string message;
@@ -118,6 +118,8 @@ class Customer : public Person {
 
 void Customer::autoMode() {
   auto message = getMessage();
+  auto translation = getMessage();
+
 
   return;
 }
@@ -164,6 +166,7 @@ class Director : public webots::Supervisor {
   auto sendMessageAll(std::string message);
   auto sendMessage(std::string message, int channel);
   std::string getMessage();
+  void sendPosition(int channel);
   private:
   int mChannel;
   int mTimeStep;
@@ -176,7 +179,7 @@ auto Director::sendMessage(std::string message, int channel) {
   
   mEmitter->setChannel(channel);
   if (mEmitter->send(message.c_str(), message.size() + 1)) {
-     std::cout << "Message sent" << std::endl;
+     std::cout << "Message sent" << message << std::endl;
     return;
   }
   std::cout << "Failed to send a message :(" << std::endl;
@@ -246,21 +249,73 @@ auto Director::autoMode() {
   // const double *translationValuesC2 {translationFieldC2->getSFVec3f()};
   // const double *translationValuesC3 {translationFieldC3->getSFVec3f()};
   // const double *translationValuesC4 {translationFieldC4->getSFVec3f()};
-  std::vector<std::string> orders {"1latte"};
-  for (auto i = 0; i < orders.size; i += 2) {
-    if (orders.at(i) == 1) {
-      sendMessage(orders.at(i+1), 1)
-    } else if (orders.at(i) == 2) {
-      sendMessage(orders.at(i+1), 2)
-    } else if (orders.at(i) == 3) {
-      sendMessage(orders.at(i+1), 3)
-    } else if (orders.at(i) == 4) {
-      sendMessage(orders.at(i+1), 4)
+  std::vector<std::string> orders {"1", "latte"};
+  for (auto i = 0; i < orders.size() -1; i += 2) {
+    if (orders.at(i) == "1") {
+      sendMessage("A", 1);
+      sendMessage(orders.at(i+1), 1);
+      sendPosition(1);
+    } else if (orders.at(i) == "2") {
+      sendMessage("A", 2);
+      sendMessage(orders.at(i+1), 2);
+    } else if (orders.at(i) == "3") {
+      sendMessage("A", 3);
+      sendMessage(orders.at(i+1), 3);
+    } else if (orders.at(i) == "4") {
+      sendMessage("A", 4);
+      sendMessage(orders.at(i+1), 4);
     }
   }
   return;
 }
 
+void Director::sendPosition(int channel) {
+  std::string robot;
+  switch (channel) {
+    case 1:
+      robot = "CUSTOMER1";
+      break;
+    case 2:
+      robot = "CUSTOMER2";
+      break;
+    case 3:
+      robot = "CUSTOMER3";
+      break;
+    case 4:
+      robot = "CUSTOMER4";
+      break;
+    default:
+      std::cout << "Robot not found." << std::endl;
+}
+  webots::Node *customer{getFromDef(robot)};
+
+  if (!customer) {
+   throw std::runtime_error("Failed to get CUSTOMER1!");
+  }
+
+  webots::Node *staff {getFromDef("STAFF")};
+  if (!staff) {
+     throw std::runtime_error("Failed to get STAFF!");
+  }
+
+
+  while(step(mTimeStep) != -1) {
+    webots::Field *translationFieldS {staff->getField("translation")};
+    const double *translationValuesS {translationFieldS->getSFVec3f()};
+    webots::Field *translationFieldC {customer->getField("translation")};
+    const double *translationValuesC {translationFieldC->getSFVec3f()};
+    int i = 0;
+    while(i < 3) {
+      std::string temp = std::to_string(translationValuesC[i]);
+      sendMessage(temp, channel);
+      temp = std::to_string(translationValuesS[i]);
+      sendMessage(temp, 5);
+      i++;
+    }
+    return;
+    
+  };
+}
 
   // auto i = 0;
   // while(i < 5) {
