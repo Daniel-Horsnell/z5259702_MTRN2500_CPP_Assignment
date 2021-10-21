@@ -33,8 +33,9 @@ class Person : public webots::Robot {
     auto exit();
     virtual void autoMode();
     void RemoteMode(int timeStep);
-    auto sendMessage(std::string message, int start, int end);
-    std::string getMessage();
+    auto sendMessageAll(std::string message);
+    auto sendMessage(std::string message, int channel);
+    auto getMessage();
 
     protected:
     int mForward;
@@ -52,20 +53,35 @@ class Person : public webots::Robot {
 
 
 
-auto Person::sendMessage(std::string message, int start, int end) {
-  while(start <= end) {
-    mEmitter->setChannel(start);
+auto Person::sendMessage(std::string message, int channel) {
+
+  mEmitter->setChannel(channel);
+  if (mEmitter->send(message.c_str(), message.size() + 1)) {
+    std::cout << "Message sent" << std::endl;
+    return;
+  }
+  std::cout << "Failed to send a message :(" << std::endl;
+
+  
+  return;
+}
+
+auto Person::sendMessageAll(std::string message) {
+  int i = 0;
+  while(i < 6) {
+    mEmitter->setChannel(i);
     if (mEmitter->send(message.c_str(), message.size() + 1)) {
-        std::cout << "Message sent" << std::endl;
+      std::cout << "Message sent" << std::endl;
         
+    }else {
+      std::cout << "Failed to send a message :(" << std::endl;
     }
-    std::cout << "Failed to send a message :(" << std::endl;
-    start++;
+    i++;
   }
   return;
 }
 
-std::string Person::getMessage() {
+auto Person::getMessage() {
   mReceiver->setChannel(mChannel);
   mReceiver->enable(mTimeStep);
   std::string message;
@@ -75,10 +91,12 @@ std::string Person::getMessage() {
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
       std::cout << "I have recevied: " << message << std::endl;
+      return message;
     }
+    return message;
   }
 
-  return message;
+  
 }
 void Person::autoMode() {
   return;
@@ -123,7 +141,7 @@ void Staff::autoMode() {
 // }
 
 auto Person::exit() {
-  sendMessage("exit", 0, 5);
+  sendMessageAll("exit");
   return;
 }
 
@@ -143,7 +161,8 @@ class Director : public webots::Supervisor {
   void idle();
   auto exit();
   auto autoMode();
-  auto sendMessage(std::string message, int start, int end);
+  auto sendMessageAll(std::string message);
+  auto sendMessage(std::string message, int channel);
   std::string getMessage();
   private:
   int mChannel;
@@ -153,21 +172,36 @@ class Director : public webots::Supervisor {
   webots::Receiver *mReceiver;
 };
 
-auto Director::sendMessage(std::string message, int start, int end) {
-  while(start <= end) {
-    mEmitter->setChannel(start);
+auto Director::sendMessage(std::string message, int channel) {
+  
+  mEmitter->setChannel(channel);
+  if (mEmitter->send(message.c_str(), message.size() + 1)) {
+     std::cout << "Message sent" << std::endl;
+    return;
+  }
+  std::cout << "Failed to send a message :(" << std::endl;
+  
+  
+  return;
+}
+
+auto Director::sendMessageAll(std::string message) {
+  int i = 0;
+  while(i < 6) {
+    mEmitter->setChannel(i);
     if (mEmitter->send(message.c_str(), message.size() + 1)) {
-        std::cout << "Message sent" << std::endl;
+      std::cout << "Message sent" << std::endl;
         
     }
-    std::cout << "Failed to send a message :(" << std::endl;
-    start++;
+  std::cout << "Failed to send a message :(" << std::endl;
+    i++;
   }
   return;
 }
 
 std::string Director::getMessage() {
   mReceiver->setChannel(mChannel);
+  mReceiver->enable(mTimeStep);
   std::string message;
   while (step(mTimeStep) != -1) {
     if (mReceiver->getQueueLength() > 0) {
@@ -175,6 +209,7 @@ std::string Director::getMessage() {
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
       std::cout << "I have recevied: " << message << std::endl;
+      return message;
     }
   }
   return message;
@@ -212,15 +247,15 @@ auto Director::autoMode() {
   // const double *translationValuesC3 {translationFieldC3->getSFVec3f()};
   // const double *translationValuesC4 {translationFieldC4->getSFVec3f()};
   std::vector<std::string> orders {"1latte"};
-  for (auto iter = orders.begin(); iter != orders.end(); ++iter) {
-    if (iter->at(0) == 1) {
-      mEmitter->setChannel(1);
-      if (mEmitter->send(iter->c_str(), iter->size() + 1)) {
-       std::cout << "Automode customer 1 initiated" << std::endl;
-        
-      } else {
-        std::cout << "Failed to send a message :(" << std::endl;
-      }
+  for (auto i = 0; i < orders.size; i += 2) {
+    if (orders.at(i) == 1) {
+      sendMessage(orders.at(i+1), 1)
+    } else if (orders.at(i) == 2) {
+      sendMessage(orders.at(i+1), 2)
+    } else if (orders.at(i) == 3) {
+      sendMessage(orders.at(i+1), 3)
+    } else if (orders.at(i) == 4) {
+      sendMessage(orders.at(i+1), 4)
     }
   }
   return;
@@ -243,7 +278,8 @@ auto Director::autoMode() {
 
 
 auto Director::exit() {
-  sendMessage("exit", 0 , 5);
+  auto message {"exit"};
+  sendMessageAll(message);
   return;
 }
 
@@ -258,7 +294,8 @@ void Director::idle() {
 auto Director::setRobotMode(std::string mode) {
   int channel = mode.at(0);
   channel = channel - 48;
-  sendMessage(mode, channel, channel);
+  sendMessage(mode, channel);
+  idle();
 }
 
 void Director::remoteControl() {
@@ -381,12 +418,12 @@ void Person::RemoteMode(int timeStep) {
           mRightMotor->setVelocity(velocity);
         } else if (key == mRight) {
         // Turn right.
-          mLeftMotor->setVelocity(velocity);
-          mRightMotor->setVelocity(-1*velocity);
+          mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
+          mRightMotor->setVelocity(-0.5*MAX_MOTOR_SPEED);
         } else if (key == mLeft) {
         // Turn left.
-          mLeftMotor->setVelocity(-1*velocity);
-          mRightMotor->setVelocity(velocity);
+          mLeftMotor->setVelocity(-0.5*MAX_MOTOR_SPEED);
+          mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
         }
       switch(key) {
 
@@ -429,3 +466,4 @@ void Person::RemoteMode(int timeStep) {
 
   };
 }
+

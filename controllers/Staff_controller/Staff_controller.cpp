@@ -29,7 +29,9 @@ int main(int argc, char **argv) {
   while (staff.step(timeStep) != -1) {
       // Queue is not empty.
     std::string message = staff.getMessage();
+    std::cout << message << std::endl;
     if(message == "5R") {
+      std::cout << "made it baby." << std::endl;
       staff.RemoteMode(timeStep);
       break;
     } else if (message == "exit") {
