@@ -9,7 +9,7 @@
 #include <webots/Supervisor.hpp>
 #include <string>
 #include <fstream>
-
+#include <sstream>
 #include <vector>
 
 auto constexpr MAX_MOTOR_SPEED = 6.28;
@@ -29,6 +29,7 @@ class Person : public webots::Robot {
         mReceiver = getReceiver("receiver");
         mLeftMotor = static_cast<webots::Motor*>(getMotor("left wheel motor"));
         mRightMotor = static_cast<webots::Motor*>(getMotor("right wheel motor"));
+
     }
     auto exit();
     virtual void autoMode();
@@ -36,7 +37,8 @@ class Person : public webots::Robot {
     auto sendMessageAll(std::string message);
     auto sendMessage(std::string message, int channel);
     std::string getMessage();
-
+    virtual void rotate90(std::string direction);
+    void move(double distance);
     protected:
     int mForward;
     int mRight;
@@ -48,16 +50,23 @@ class Person : public webots::Robot {
     webots::Receiver *mReceiver;
     webots::Motor *mLeftMotor;
     webots::Motor *mRightMotor;
-
+    double mOrderPositionX;
+    double mOrderPositionZ;
+    double mPickUpPositionX;
+    double mPickUpPositionZ;
+    double mStepRatio;
 };
 
+void Person::rotate90(std::string direction) {
+  return;
+}
 
 
 auto Person::sendMessage(std::string message, int channel) {
 
   mEmitter->setChannel(channel);
   if (mEmitter->send(message.c_str(), message.size() + 1)) {
-    std::cout << "Message sent" << std::endl;
+    // std::cout << "Message sent" << std::endl;
     return;
   }
   std::cout << "Failed to send a message :(" << std::endl;
@@ -71,7 +80,7 @@ auto Person::sendMessageAll(std::string message) {
   while(i < 6) {
     mEmitter->setChannel(i);
     if (mEmitter->send(message.c_str(), message.size() + 1)) {
-      std::cout << "Message sent" << std::endl;
+      // std::cout << "Message sent" << std::endl;
         
     }else {
       std::cout << "Failed to send a message :(" << std::endl;
@@ -90,7 +99,7 @@ std::string Person::getMessage() {
       message =
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
-      std::cout << "I have recevied: " << message << std::endl;
+      // std::cout << "I have recevied: " << message << std::endl;
       return message;
     }
     return message;
@@ -104,29 +113,146 @@ void Person::autoMode() {
 
 class Staff : public Person {
   public:
-  Staff(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {}
+  Staff(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {
+    mOrderPositionX = 0.63; 
+    mOrderPositionZ = 0.375;
+    mPickUpPositionX = 0.63;
+    mPickUpPositionZ = -0.375;
+    mStepRatio = 0.0038;
+  }
   void autoMode();
+  void rotate90(std::string direction);
+
 };
 
 class Customer : public Person {
   public:
-  Customer(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {}
+  Customer(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {
+    mOrderPositionX = 0.45; 
+    mOrderPositionZ = 0.375;
+    mPickUpPositionX = 0.45;
+    mPickUpPositionZ = -0.375;
+    mStepRatio = 0.00265;
+  }
+  void rotate90(std::string direction);
   void autoMode();
   private:
   double money;
 };
 
+void Customer::rotate90(std::string direction) {
+  double coef;
+  if (direction == "C") {
+    coef = 0.5;
+  } else {
+    coef = -0.5;
+  }
+  int i = 0;
+  mLeftMotor->setPosition(INFINITY);
+  mRightMotor->setPosition(INFINITY);
+  mLeftMotor->setVelocity(coef*MAX_MOTOR_SPEED);
+  mRightMotor->setVelocity(-coef*MAX_MOTOR_SPEED);
+
+  
+  while(step(mTimeStep) != -1) {
+    if (i > 29) {
+      break;
+    }
+    i++;
+  }
+  mLeftMotor->setVelocity(0);
+  mRightMotor->setVelocity(0);
+}
+
+void Staff::rotate90(std::string direction) {
+  double coef;
+  if (direction == "C") {
+    coef = 0.5;
+  } else {
+    coef = -0.5;
+  }
+  int i = 0;
+  mLeftMotor->setPosition(INFINITY);
+  mRightMotor->setPosition(INFINITY);
+  mLeftMotor->setVelocity(coef*MAX_MOTOR_SPEED);
+  mRightMotor->setVelocity(-coef*MAX_MOTOR_SPEED);
+
+  
+  while(step(mTimeStep) != -1) {
+    if (i > 20) {
+      break;
+    }
+    i++;
+  }
+  mLeftMotor->setVelocity(0);
+  mRightMotor->setVelocity(0);
+}
+
+
 void Customer::autoMode() {
-  auto message = getMessage();
-  auto translation = getMessage();
+  auto order = getMessage();
+  rotate90("C");
+  mLeftMotor->setPosition(INFINITY);
+  mRightMotor->setPosition(INFINITY);
+  mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
+  mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
+  int i = 0;
 
+  double translationX = std::stod(getMessage());
+  double translationZ = std::stod(getMessage());
+  double distanceX = (mOrderPositionX - translationX);
+  move(distanceX); 
+  
+  double distanceZ = (mOrderPositionZ - translationZ);
+  if (distanceZ < 0) {
+    rotate90("CC");
+    move(-distanceZ);
+    rotate90("C");
+  } else {
+    rotate90("C");
+    rotate90("CC");
+  }
+  sendMessage(order, 5); 
+  return;
+}
 
+void Person::move(double distance) {
+  int stop = distance/mStepRatio;
+  std::cout << stop << std::endl;
+  int i = 0;
+  mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
+  mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
+  while (step(mTimeStep) != -1) {
+    if(i > stop) {
+      break;
+    }
+    i++;
+  };
+  mLeftMotor->setVelocity(0);
+  mRightMotor->setVelocity(0);  
   return;
 }
 
 void Staff::autoMode() {
+  std::cout << "staff auto" << std::endl;
+  double translationX = std::stod(getMessage());
+  double translationZ = std::stod(getMessage());
+  while(step(mTimeStep) != -1) {
+    std::string message = getMessage();
+    if(message != "") {
+      std::cout << message << std::endl; 
+      break;
+    }
+  }
+  rotate90("CC");
   auto message = getMessage();
 
+  double distanceX = (mOrderPositionX - translationX);
+  move(-distanceX);
+  rotate90("C");
+  double distanceZ = (mOrderPositionZ - translationZ);
+  move(-distanceZ + 0.23);
+  rotate90("CC");
   return;
 }
 // auto readCSV(std::string filename) {
@@ -179,7 +305,6 @@ auto Director::sendMessage(std::string message, int channel) {
   
   mEmitter->setChannel(channel);
   if (mEmitter->send(message.c_str(), message.size() + 1)) {
-     std::cout << "Message sent" << message << std::endl;
     return;
   }
   std::cout << "Failed to send a message :(" << std::endl;
@@ -193,7 +318,7 @@ auto Director::sendMessageAll(std::string message) {
   while(i < 6) {
     mEmitter->setChannel(i);
     if (mEmitter->send(message.c_str(), message.size() + 1)) {
-      std::cout << "Message sent" << std::endl;
+      // std::cout << "Message sent" << std::endl;
         
     }
   std::cout << "Failed to send a message :(" << std::endl;
@@ -211,7 +336,7 @@ std::string Director::getMessage() {
       message =
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
-      std::cout << "I have recevied: " << message << std::endl;
+      // std::cout << "I have recevied: " << message << std::endl;
       return message;
     }
   }
@@ -249,12 +374,16 @@ auto Director::autoMode() {
   // const double *translationValuesC2 {translationFieldC2->getSFVec3f()};
   // const double *translationValuesC3 {translationFieldC3->getSFVec3f()};
   // const double *translationValuesC4 {translationFieldC4->getSFVec3f()};
+  
+  
   std::vector<std::string> orders {"1", "latte"};
   for (auto i = 0; i < orders.size() -1; i += 2) {
     if (orders.at(i) == "1") {
       sendMessage("A", 1);
+      sendMessage("A", 5);
       sendMessage(orders.at(i+1), 1);
       sendPosition(1);
+
     } else if (orders.at(i) == "2") {
       sendMessage("A", 2);
       sendMessage(orders.at(i+1), 2);
@@ -299,22 +428,29 @@ void Director::sendPosition(int channel) {
   }
 
 
-  while(step(mTimeStep) != -1) {
-    webots::Field *translationFieldS {staff->getField("translation")};
-    const double *translationValuesS {translationFieldS->getSFVec3f()};
-    webots::Field *translationFieldC {customer->getField("translation")};
-    const double *translationValuesC {translationFieldC->getSFVec3f()};
-    int i = 0;
-    while(i < 3) {
-      std::string temp = std::to_string(translationValuesC[i]);
-      sendMessage(temp, channel);
-      temp = std::to_string(translationValuesS[i]);
-      sendMessage(temp, 5);
-      i++;
-    }
-    return;
+  
+  webots::Field *translationFieldS {staff->getField("translation")};
+  const double *translationValuesS {translationFieldS->getSFVec3f()};
+  webots::Field *translationFieldC {customer->getField("translation")};
+  const double *translationValuesC {translationFieldC->getSFVec3f()};
+
     
-  };
+  std::string tempX = std::to_string(translationValuesC[0]);
+  std::string tempZ = std::to_string(translationValuesC[2]);
+  std::string tempY = std::to_string(translationValuesC[1]);
+
+  sendMessage(tempX, channel);
+  sendMessage(tempZ, channel);
+  tempX = std::to_string(translationValuesS[0]);
+  tempZ = std::to_string(translationValuesS[2]);
+  sendMessage(tempX, 5);
+  sendMessage(tempZ, 5);
+
+  idle();
+    
+    
+  
+  return;
 }
 
   // auto i = 0;

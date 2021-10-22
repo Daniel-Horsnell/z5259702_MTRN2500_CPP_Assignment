@@ -36,6 +36,8 @@ int main(int argc, char **argv) {
       break;
     } else if (message == "exit") {
       return 0;
+    } else if (message == "A") {
+      staff.autoMode();
     }
       
 

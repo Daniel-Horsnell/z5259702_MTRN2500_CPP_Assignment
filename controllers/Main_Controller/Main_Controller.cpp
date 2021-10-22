@@ -11,6 +11,8 @@
 #include <iostream>
 #include <webots/Keyboard.hpp>
 #include "..\Helper.cpp"
+#include <fstream>
+#include <sstream>
 
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
@@ -18,7 +20,17 @@ using namespace webots;
 int main(int argc, char **argv) {
   // create the Supervisor instance.
   auto director = Director();
+  std::string filename {"../Starting.csv"};
+  std::ifstream ifst{};
+  std::string str {};
 
+  ifst.open(filename, std::ios::in);
+  if (!ifst) {
+    std::cout << "Can not open file." << std::endl;
+  }
+  std::string line;
+  getline(ifst, line);
+  std::cout << line << std::endl;
   director.menu();
     
   return 0;
