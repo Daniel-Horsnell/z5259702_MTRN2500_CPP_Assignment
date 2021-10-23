@@ -14,12 +14,27 @@
 #include "..\Helper.cpp"
 #include <webots/Receiver.hpp>
 #include <webots/Supervisor.hpp>
+#include <string>
+#include <vector>
+#include <fstream>
 
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 
 int main(int argc, char **argv) {
-
+  std::string filename {"../Menu.csv"};
+  std::ifstream input{};
+  std::vector <std::string> menu;
+  std::string line;
+  input.open(filename, std::ios::in);
+  if (!input) {
+    std::cout << "Can not open file." << std::endl;
+  }
+  getline(input, line);
+  while(std::getline(input, line)) {
+    menu.push_back(line);
+  }
+  std::cout << menu.at(2) << "menu" << std::endl;
   auto staff = Staff(315, 314, 316, 5);
 
   int timeStep = (int)staff.getBasicTimeStep();

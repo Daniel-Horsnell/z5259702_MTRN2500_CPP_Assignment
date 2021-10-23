@@ -13,25 +13,38 @@
 #include "..\Helper.cpp"
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <vector>
 
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 
 int main(int argc, char **argv) {
   // create the Supervisor instance.
-  auto director = Director();
-  std::string filename {"../Starting.csv"};
-  std::ifstream ifst{};
-  std::string str {};
+  
+  std::string filename {"../Order.csv"};
+  std::ifstream input{};
 
-  ifst.open(filename, std::ios::in);
-  if (!ifst) {
+
+  input.open(filename, std::ios::in);
+  if (!input) {
     std::cout << "Can not open file." << std::endl;
   }
   std::string line;
-  getline(ifst, line);
-  std::cout << line << std::endl;
+  getline(input, line);
+  std::vector <std::string> orders;
+  while(getline(input, line)) {
+    std::string temp1;
+    temp1.push_back(line.at(0));
+    std::string temp2 = line.erase(0,1);
+    orders.push_back(temp1);
+    orders.push_back(temp2);  
+    }
+  std::cout << orders.at(0) << orders.at(1) << "orders" << std::endl;
+
+  auto director = Director(orders);
   director.menu();
     
   return 0;
 }
+

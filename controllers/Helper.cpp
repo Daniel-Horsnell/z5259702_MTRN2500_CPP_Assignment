@@ -39,6 +39,7 @@ class Person : public webots::Robot {
     std::string getMessage();
     virtual void rotate90(std::string direction);
     void move(double distance);
+    void navigate(double X, double Z, double rotation);
     protected:
     int mForward;
     int mRight;
@@ -100,7 +101,10 @@ std::string Person::getMessage() {
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
       // std::cout << "I have recevied: " << message << std::endl;
-      return message;
+      if (message != "") {
+        std::cout << "I have recieved" << message << std::endl;
+        return message;
+      }
     }
     return message;
   }
@@ -114,11 +118,11 @@ void Person::autoMode() {
 class Staff : public Person {
   public:
   Staff(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {
-    mOrderPositionX = 0.63; 
+    mOrderPositionX = 0.8; 
     mOrderPositionZ = 0.375;
-    mPickUpPositionX = 0.63;
+    mPickUpPositionX = 0.8;
     mPickUpPositionZ = -0.375;
-    mStepRatio = 0.0038;
+    mStepRatio = 0.0028;
   }
   void autoMode();
   void rotate90(std::string direction);
@@ -191,31 +195,116 @@ void Staff::rotate90(std::string direction) {
 
 void Customer::autoMode() {
   auto order = getMessage();
-  rotate90("C");
   mLeftMotor->setPosition(INFINITY);
   mRightMotor->setPosition(INFINITY);
   mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
   mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
-  int i = 0;
 
   double translationX = std::stod(getMessage());
   double translationZ = std::stod(getMessage());
+  double rotation = std::stod(getMessage());
+  std::cout << getMessage() << "customer" << std::endl;
   double distanceX = (mOrderPositionX - translationX);
-  move(distanceX); 
-  
   double distanceZ = (mOrderPositionZ - translationZ);
-  if (distanceZ < 0) {
-    rotate90("CC");
-    move(-distanceZ);
-    rotate90("C");
-  } else {
-    rotate90("C");
-    rotate90("CC");
-  }
+
+  navigate(distanceX, distanceZ, rotation);
   sendMessage(order, 5); 
+  
+  std::string message;
+  while(step(mTimeStep) != -1) {
+    message = getMessage();
+    if (message != "") {
+      break;
+    }
+  };
+  if (mChannel == 1) {
+    sendMessage("Pos1", 0);
+  } else if (mChannel == 2) {
+    sendMessage("Pos2", 0);
+  } else if (mChannel == 3) {
+    sendMessage("Pos3", 0);
+  } else if (mChannel == 4) {
+    sendMessage("Pos4", 0);
+  } 
+  int i = 0;
+  while (step(mTimeStep) != -1 && i < 20) {
+    i++;
+  }
+
+  double translationXF = std::stod(getMessage());
+  double translationZF = std::stod(getMessage());
+  double rotationF = std::stod(getMessage());
+  navigate(translationXF -translationX, translationZF- translationZ, rotationF);
+  rotate90("C");
+  rotate90("C");
+  if (message == "Not in menu") {
+    std::cout << "Done" << std::endl;
+    return;
+  }
+
   return;
 }
 
+void Person::navigate(double distanceX, double distanceZ, double rotation) {
+  
+  if(distanceX < 0) {
+    if(rotation < 0.1 && rotation > -0.1) {
+      rotate90("CC");
+      move(-distanceX/2);
+    } else if (rotation < 1.7 && rotation > 1.5) {
+      rotate90("C");
+      rotate90("C");
+      move(-distanceX/2);
+    } else if (rotation > 3 && rotation < 3.3) {
+      rotate90("C");
+      move(-distanceX/2);
+    } else {
+      move(-distanceX/2);
+    }
+
+    if (distanceZ < 0) {
+      rotate90("C");
+      move(-distanceZ);
+      rotate90("CC");
+      move(-distanceX/2);
+    } else {
+      rotate90("CC");
+      move(distanceZ);
+      rotate90("C");
+      move(-distanceX/2);
+    }
+  } else {
+    if(rotation < 0.1 && rotation > -0.1) {
+      rotate90("C");
+      move(distanceX/2);
+    } else if (rotation < 1.7 && rotation > 1.5) {
+      move(distanceX/2);
+    } else if (rotation > 3 && rotation < 3.3) {
+      
+      rotate90("C");
+      move(distanceX/2);
+    } else {
+      
+      rotate90("C");
+      rotate90("C");
+      move(distanceX/2);
+    }
+
+    if (distanceZ < 0) {
+      rotate90("CC");
+      move(-distanceZ);
+      rotate90("C");
+      move(distanceX/2);
+    } else {
+      rotate90("C");
+      move(distanceZ);
+      rotate90("CC");
+      move(distanceX/2);
+    }
+  }
+  
+  
+}
 void Person::move(double distance) {
   int stop = distance/mStepRatio;
   std::cout << stop << std::endl;
@@ -237,6 +326,22 @@ void Staff::autoMode() {
   std::cout << "staff auto" << std::endl;
   double translationX = std::stod(getMessage());
   double translationZ = std::stod(getMessage());
+  double rotation = std::stod(getMessage());
+
+  std::string channel = getMessage();
+
+  int iChannel;
+  if (channel == "ch1") {
+    iChannel = 1;
+  } else if (channel == "ch2") {
+    iChannel = 2;
+  } else if (channel == "ch3") {
+    iChannel = 3;
+  } else if (channel == "ch4") {
+    iChannel = 4;
+  }
+  std:: cout << channel << "channel" << std::endl;
+  std::cout << getMessage() << "staff" << std::endl;
   while(step(mTimeStep) != -1) {
     std::string message = getMessage();
     if(message != "") {
@@ -244,15 +349,30 @@ void Staff::autoMode() {
       break;
     }
   }
-  rotate90("CC");
-  auto message = getMessage();
+
+
 
   double distanceX = (mOrderPositionX - translationX);
-  move(-distanceX);
-  rotate90("C");
+
   double distanceZ = (mOrderPositionZ - translationZ);
-  move(-distanceZ + 0.23);
-  rotate90("CC");
+  navigate(distanceX, distanceZ, rotation);
+
+  double translationXF;
+  double translationZF;
+  double rotationF;
+  if(true) {
+    sendMessage("Not in menu", iChannel); 
+    int i = 0;
+    while(step(mTimeStep) != -1 && i < 30) {
+      i++;
+    }
+    translationXF = std::stod(getMessage());
+    translationZF = std::stod(getMessage());
+    rotationF = std::stod(getMessage());
+    std::cout << "moving back to start" << translationXF << translationZF << rotationF << std::endl;
+    navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+  }
+
   return;
 }
 // auto readCSV(std::string filename) {
@@ -276,12 +396,13 @@ auto Person::exit() {
 
 class Director : public webots::Supervisor {
   public:
-  Director() : Supervisor() {
+  Director(std::vector <std::string> orders) : Supervisor() {
     mTimeStep = getBasicTimeStep();
     mKeyboard = getKeyboard();
     mEmitter = getEmitter("emitter");
     mReceiver = getReceiver("receiver");
     mChannel = 0;
+    mOrders = orders;
   }
   void menu();
   void remoteControl();
@@ -299,6 +420,7 @@ class Director : public webots::Supervisor {
   webots::Keyboard *mKeyboard;
   webots::Emitter *mEmitter;
   webots::Receiver *mReceiver;
+  std::vector <std::string> mOrders;
 };
 
 auto Director::sendMessage(std::string message, int channel) {
@@ -337,7 +459,9 @@ std::string Director::getMessage() {
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
       // std::cout << "I have recevied: " << message << std::endl;
-      return message;
+      if(message != "") {
+        return message;
+      }
     }
   }
   return message;
@@ -376,23 +500,23 @@ auto Director::autoMode() {
   // const double *translationValuesC4 {translationFieldC4->getSFVec3f()};
   
   
-  std::vector<std::string> orders {"1", "latte"};
-  for (auto i = 0; i < orders.size() -1; i += 2) {
-    if (orders.at(i) == "1") {
+
+  for (auto i = 0; i < mOrders.size() -1; i += 2) {
+    if (mOrders.at(i) == "1") {
       sendMessage("A", 1);
       sendMessage("A", 5);
-      sendMessage(orders.at(i+1), 1);
+      sendMessage(mOrders.at(i+1), 1);
       sendPosition(1);
 
-    } else if (orders.at(i) == "2") {
+    } else if (mOrders.at(i) == "2") {
       sendMessage("A", 2);
-      sendMessage(orders.at(i+1), 2);
-    } else if (orders.at(i) == "3") {
+      sendMessage(mOrders.at(i+1), 2);
+    } else if (mOrders.at(i) == "3") {
       sendMessage("A", 3);
-      sendMessage(orders.at(i+1), 3);
-    } else if (orders.at(i) == "4") {
+      sendMessage(mOrders.at(i+1), 3);
+    } else if (mOrders.at(i) == "4") {
       sendMessage("A", 4);
-      sendMessage(orders.at(i+1), 4);
+      sendMessage(mOrders.at(i+1), 4);
     }
   }
   return;
@@ -400,18 +524,23 @@ auto Director::autoMode() {
 
 void Director::sendPosition(int channel) {
   std::string robot;
+  std::string str_channel;
   switch (channel) {
     case 1:
       robot = "CUSTOMER1";
+      str_channel = "ch1";
       break;
     case 2:
       robot = "CUSTOMER2";
+      str_channel = "ch2";
       break;
     case 3:
       robot = "CUSTOMER3";
+      str_channel = "ch3";
       break;
     case 4:
       robot = "CUSTOMER4";
+      str_channel = "ch4";
       break;
     default:
       std::cout << "Robot not found." << std::endl;
@@ -419,7 +548,7 @@ void Director::sendPosition(int channel) {
   webots::Node *customer{getFromDef(robot)};
 
   if (!customer) {
-   throw std::runtime_error("Failed to get CUSTOMER1!");
+   throw std::runtime_error("Failed to get CUSTOMER!");
   }
 
   webots::Node *staff {getFromDef("STAFF")};
@@ -431,20 +560,30 @@ void Director::sendPosition(int channel) {
   
   webots::Field *translationFieldS {staff->getField("translation")};
   const double *translationValuesS {translationFieldS->getSFVec3f()};
+  webots::Field *rotationFieldS {staff->getField("rotation")};
+  const double *rotationValuesS {rotationFieldS->getSFRotation()};
   webots::Field *translationFieldC {customer->getField("translation")};
   const double *translationValuesC {translationFieldC->getSFVec3f()};
+  webots::Field *rotationFieldC {customer->getField("rotation")};
+  const double *rotationValuesC {rotationFieldC->getSFRotation()};
 
-    
+
+
   std::string tempX = std::to_string(translationValuesC[0]);
   std::string tempZ = std::to_string(translationValuesC[2]);
-  std::string tempY = std::to_string(translationValuesC[1]);
+  std::string tempR = std::to_string(rotationValuesC[1]*rotationValuesC[3]);
+
 
   sendMessage(tempX, channel);
   sendMessage(tempZ, channel);
+  sendMessage(tempR, channel);
   tempX = std::to_string(translationValuesS[0]);
   tempZ = std::to_string(translationValuesS[2]);
+  tempR = std::to_string(rotationValuesS[1]*rotationValuesS[3]);
   sendMessage(tempX, 5);
   sendMessage(tempZ, 5);
+  sendMessage(tempR, 5);
+  sendMessage(str_channel, 5);
 
   idle();
     
@@ -479,6 +618,14 @@ void Director::idle() {
     std::string message = getMessage();
     if (message == "exit") {
       return;
+    } else if (message == "Pos1") {
+      sendPosition(1);
+    } else if (message == "Pos2") {
+      sendPosition(2);
+    } else if (message == "Pos3") {
+      sendPosition(3);
+    } else if (message == "Pos4") {
+      sendPosition(4);
     }
   };
 }
