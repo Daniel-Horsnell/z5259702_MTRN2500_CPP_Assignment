@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <iterator>
 
 auto constexpr MAX_MOTOR_SPEED = 6.28;
 
@@ -40,6 +41,7 @@ class Person : public webots::Robot {
     virtual void rotate90(std::string direction);
     void move(double distance);
     void navigate(double X, double Z, double rotation);
+    virtual bool inMenu(std::string order, double & price, double & time);
     protected:
     int mForward;
     int mRight;
@@ -58,6 +60,9 @@ class Person : public webots::Robot {
     double mStepRatio;
 };
 
+bool Person::inMenu(std::string order, double & price, double & time) {
+  return true;
+}
 void Person::rotate90(std::string direction) {
   return;
 }
@@ -117,32 +122,55 @@ void Person::autoMode() {
 
 class Staff : public Person {
   public:
-  Staff(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {
+  Staff(int forward, int left, int right, int channel, std::vector <std::string> menu) : Person(forward, left, right, channel) {
     mOrderPositionX = 0.8; 
     mOrderPositionZ = 0.375;
     mPickUpPositionX = 0.8;
     mPickUpPositionZ = -0.375;
     mStepRatio = 0.0028;
+    mMenu = menu;
   }
   void autoMode();
   void rotate90(std::string direction);
+  bool inMenu(std::string order, double & price, double & time);
+  private:
+  std::vector<std::string> mMenu;
 
 };
 
 class Customer : public Person {
   public:
-  Customer(int forward, int left, int right, int channel) : Person(forward, left, right, channel) {
+  Customer(int forward, int left, int right, int channel, double money) : Person(forward, left, right, channel) {
     mOrderPositionX = 0.45; 
     mOrderPositionZ = 0.375;
     mPickUpPositionX = 0.45;
     mPickUpPositionZ = -0.375;
     mStepRatio = 0.00265;
+    mMoney = money;
   }
   void rotate90(std::string direction);
   void autoMode();
   private:
-  double money;
+  double mMoney;
 };
+
+bool Staff::inMenu(std::string order, double & price, double & time) {
+  std::string time_str;
+  std::string price_str;
+  std::string item;
+  for (std::vector<std::string>::const_iterator iter = mMenu.cbegin(); iter!=mMenu.cend(); ++iter) {
+    if(iter->find(order)) {
+      std::stringstream menuItem (*iter); 
+      std::getline(menuItem, item, ',');
+      std::getline(menuItem, time_str, ',');
+      std::getline(menuItem, price_str, ',');
+      price = std::stod(price_str);
+      time = std::stod(time_str);
+      return true;
+    }
+  }
+  return false;
+}
 
 void Customer::rotate90(std::string direction) {
   double coef;
@@ -197,9 +225,8 @@ void Customer::autoMode() {
   auto order = getMessage();
   mLeftMotor->setPosition(INFINITY);
   mRightMotor->setPosition(INFINITY);
-  mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
-  mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
 
+  
   double translationX = std::stod(getMessage());
   double translationZ = std::stod(getMessage());
   double rotation = std::stod(getMessage());
@@ -209,14 +236,9 @@ void Customer::autoMode() {
 
   navigate(distanceX, distanceZ, rotation);
   sendMessage(order, 5); 
+
   
-  std::string message;
-  while(step(mTimeStep) != -1) {
-    message = getMessage();
-    if (message != "") {
-      break;
-    }
-  };
+
   if (mChannel == 1) {
     sendMessage("Pos1", 0);
   } else if (mChannel == 2) {
@@ -226,21 +248,43 @@ void Customer::autoMode() {
   } else if (mChannel == 4) {
     sendMessage("Pos4", 0);
   } 
-  int i = 0;
-  while (step(mTimeStep) != -1 && i < 20) {
-    i++;
-  }
-
+  
+  
+  getMessage(); 
   double translationXF = std::stod(getMessage());
   double translationZF = std::stod(getMessage());
   double rotationF = std::stod(getMessage());
   navigate(translationXF -translationX, translationZF- translationZ, rotationF);
   rotate90("C");
-  rotate90("C");
+  std::string message = getMessage();
   if (message == "Not in menu") {
     std::cout << "Done" << std::endl;
     return;
-  }
+  } 
+  std::cout << message << " message" << std::endl;
+  double price = std::stod(message);
+  if (price > mMoney) {
+    sendMessage("Oops", 5);
+    std::cout << "Customer " << mChannel << ": Hi Staff, oops, I can't afford it" << std::endl;
+    return;
+  } 
+
+  mMoney -= price;
+  sendMessage("Y", 5);
+  getMessage(); // Returns ready but is not useful to know that information.
+  std::cout << "Customer " << mChannel << ": I am heading to pickup counter" << std::endl;
+  translationXF = std::stod(getMessage());
+  translationZF = std::stod(getMessage());
+  rotationF = std::stod(getMessage());
+  navigate(translationXF - mPickUpPositionX, translationZF- mPickUpPositionZ, rotationF);
+  sendMessage("Thanks", 5);
+  std::cout << "Customer " << mChannel << ": I got my Cappuccino" << std::endl;
+  std::cout << "Customer " << mChannel << "I am returning to starting point" << std::endl;
+  translationXF = std::stod(getMessage());
+  translationZF = std::stod(getMessage());
+  rotationF = std::stod(getMessage());
+  navigate(translationXF -translationX, translationZF- translationZ, rotationF);
+  
 
   return;
 }
@@ -331,19 +375,20 @@ void Staff::autoMode() {
   std::string channel = getMessage();
 
   int iChannel;
-  if (channel == "ch1") {
+  if (channel == "Pos1") {
     iChannel = 1;
-  } else if (channel == "ch2") {
+  } else if (channel == "Pos2") {
     iChannel = 2;
-  } else if (channel == "ch3") {
+  } else if (channel == "Pos3") {
     iChannel = 3;
-  } else if (channel == "ch4") {
+  } else if (channel == "Pos4") {
     iChannel = 4;
   }
   std:: cout << channel << "channel" << std::endl;
   std::cout << getMessage() << "staff" << std::endl;
+  std::string message;
   while(step(mTimeStep) != -1) {
-    std::string message = getMessage();
+    message = getMessage();
     if(message != "") {
       std::cout << message << std::endl; 
       break;
@@ -360,8 +405,29 @@ void Staff::autoMode() {
   double translationXF;
   double translationZF;
   double rotationF;
-  if(true) {
+  double price;
+  double time;
+
+  if(!inMenu(message, price, time)) {
     sendMessage("Not in menu", iChannel); 
+    
+    translationXF = std::stod(getMessage());
+    translationZF = std::stod(getMessage());
+    rotationF = std::stod(getMessage());
+    getMessage();
+    std::cout << "moving back to start" << translationXF << translationZF << rotationF << std::endl;
+    navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+    return;
+  }
+  std::cout << "Staff: Hi Customer " << iChannel << ", the price for " << message <<  " is " << price <<"." << std::endl;
+  auto price_str = std::to_string(price);
+  sendMessage(price_str, iChannel);
+  getMessage();
+  getMessage();
+  getMessage();
+  auto answer = getMessage();
+  std::cout << answer << "answer" << std::endl;
+  if(answer == "Oops") {
     int i = 0;
     while(step(mTimeStep) != -1 && i < 30) {
       i++;
@@ -371,7 +437,27 @@ void Staff::autoMode() {
     rotationF = std::stod(getMessage());
     std::cout << "moving back to start" << translationXF << translationZF << rotationF << std::endl;
     navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+    return;
   }
+  int total_timeSteps = 1000/32*time;
+  int counter = 0;
+  while(counter < total_timeSteps){
+    counter++;
+  }
+  std::cout << "Staff: Hi Customer " << iChannel << ", your " << message << " is ready, please proceed to pickup counter" << std::endl;
+  sendMessage("Ready", iChannel);
+  sendMessage(channel, 0);
+  std::cout << getMessage() << "message" << std::endl; 
+  translationXF = std::stod(getMessage());
+  translationZF = std::stod(getMessage());
+  rotationF = std::stod(getMessage());
+  navigate(translationXF - mPickUpPositionX, translationZF - mPickUpPositionZ, rotationF);
+  getMessage();
+  sendMessage(channel, 0);
+  translationXF = std::stod(getMessage());
+  translationZF = std::stod(getMessage());
+  rotationF = std::stod(getMessage());
+  navigate(translationXF - translationX, translationZF - translationZ, rotationF);
 
   return;
 }
@@ -528,19 +614,19 @@ void Director::sendPosition(int channel) {
   switch (channel) {
     case 1:
       robot = "CUSTOMER1";
-      str_channel = "ch1";
+      str_channel = "Pos1";
       break;
     case 2:
       robot = "CUSTOMER2";
-      str_channel = "ch2";
+      str_channel = "Pos2";
       break;
     case 3:
       robot = "CUSTOMER3";
-      str_channel = "ch3";
+      str_channel = "Pos3";
       break;
     case 4:
       robot = "CUSTOMER4";
-      str_channel = "ch4";
+      str_channel = "Pos4";
       break;
     default:
       std::cout << "Robot not found." << std::endl;
@@ -794,6 +880,8 @@ void Person::RemoteMode(int timeStep) {
           break;
         // Exit.
         case 65605 : case 69 :
+          mLeftMotor->setVelocity(0);
+          mRightMotor->setVelocity(0);
           exit();
           return;
         default :

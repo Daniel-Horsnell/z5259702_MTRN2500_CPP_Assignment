@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   while(getline(input, line)) {
     std::string temp1;
     temp1.push_back(line.at(0));
-    std::string temp2 = line.erase(0,1);
+    std::string temp2 = line.erase(0,2);
     orders.push_back(temp1);
     orders.push_back(temp2);  
     }

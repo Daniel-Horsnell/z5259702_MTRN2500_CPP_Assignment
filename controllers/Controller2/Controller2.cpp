@@ -21,14 +21,31 @@ using namespace webots;
 
 int main(int argc, char **argv) {
 
-  auto customer2 = Customer(87, 65, 68, 2);
+  std::string filename {"../Starting.csv"};
+  std::ifstream input{};
+  std::vector <std::string> menu;
+  std::string line;
+  input.open(filename, std::ios::in);
+  if (!input) {
+    std::cout << "Can not open file." << std::endl;
+  }
+  double money;
+  getline(input, line);
+  while(getline(input,line)) {
+    if(line[0] == '2') {
+      int size = line.length();
+      std::string temp = line.substr(2,size);
+      money = std::stod(temp);
+    }
+  }
+  std::cout << money << "money" << std::endl;
+  auto customer2 = Customer(87, 65, 68, 2, money);
 
   int timeStep = (int)customer2.getBasicTimeStep();
 
   auto receiver = static_cast<webots::Receiver*>(customer2.getReceiver("receiver"));
   receiver->enable(timeStep);
   receiver->setChannel(2);
-
   while (customer2.step(timeStep) != -1) {
       // Queue is not empty.
 

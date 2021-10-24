@@ -20,7 +20,25 @@ using namespace webots;
 
 int main(int argc, char **argv) {
 
-  auto customer4 = Customer(87, 65, 68, 4);
+  std::string filename {"../Starting.csv"};
+  std::ifstream input{};
+  std::vector <std::string> menu;
+  std::string line;
+  input.open(filename, std::ios::in);
+  if (!input) {
+    std::cout << "Can not open file." << std::endl;
+  }
+  double money;
+  getline(input, line);
+  while(getline(input,line)) {
+    if(line[0] == '4') {
+      int size = line.length();
+      std::string temp = line.substr(2,size);
+      money = std::stod(temp);
+    }
+  }
+  std::cout << money << "money" << std::endl;
+  auto customer4 = Customer(87, 65, 68, 4, money);
 
   int timeStep = (int)customer4.getBasicTimeStep();
 

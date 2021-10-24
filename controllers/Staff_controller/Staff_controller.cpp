@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
   while(std::getline(input, line)) {
     menu.push_back(line);
   }
-  std::cout << menu.at(2) << "menu" << std::endl;
-  auto staff = Staff(315, 314, 316, 5);
+
+  auto staff = Staff(315, 314, 316, 5, menu);
 
   int timeStep = (int)staff.getBasicTimeStep();
 
