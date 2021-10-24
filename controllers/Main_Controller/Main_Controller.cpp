@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     orders.push_back(temp1);
     orders.push_back(temp2);  
     }
-  std::cout << orders.at(0) << orders.at(1) << "orders" << std::endl;
+
 
   auto director = Director(orders);
   director.menu();

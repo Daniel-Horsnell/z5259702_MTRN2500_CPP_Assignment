@@ -37,11 +37,11 @@ int main(int argc, char **argv) {
       money = std::stod(temp);
     }
   }
-  std::cout << money << "money" << std::endl;
-  auto customer4 = Customer(87, 65, 68, 4, money);
+
+  auto customer4 = Customer(87, 65, 68, 4, money, -1.395, -0.64);
 
   int timeStep = (int)customer4.getBasicTimeStep();
-
+  bool wasAuto = false;
   auto receiver = static_cast<webots::Receiver*>(customer4.getReceiver("receiver"));
   receiver->enable(timeStep);
   receiver->setChannel(4);
@@ -53,13 +53,16 @@ int main(int argc, char **argv) {
         customer4.RemoteMode(timeStep);
          break;
         } else if (message == "exit") {
-          return 0;
+          break;
         } else if (message == "A") {
           customer4.autoMode();
+          wasAuto = true;
         }
 
   };
-
+  if (wasAuto) {
+    customer4.showAccount();
+  }
 
 
 

@@ -12,6 +12,7 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <iomanip>
 
 auto constexpr MAX_MOTOR_SPEED = 6.28;
 
@@ -33,6 +34,7 @@ class Person : public webots::Robot {
 
     }
     auto exit();
+    virtual void showAccount();
     virtual void autoMode();
     void RemoteMode(int timeStep);
     auto sendMessageAll(std::string message);
@@ -58,7 +60,14 @@ class Person : public webots::Robot {
     double mPickUpPositionX;
     double mPickUpPositionZ;
     double mStepRatio;
+    double mStartX;
+    double mStartZ;
+    double mMoney;
 };
+
+void Person::showAccount() {
+  return;
+}
 
 bool Person::inMenu(std::string order, double & price, double & time) {
   return true;
@@ -71,13 +80,8 @@ void Person::rotate90(std::string direction) {
 auto Person::sendMessage(std::string message, int channel) {
 
   mEmitter->setChannel(channel);
-  if (mEmitter->send(message.c_str(), message.size() + 1)) {
-    // std::cout << "Message sent" << std::endl;
-    return;
-  }
-  std::cout << "Failed to send a message :(" << std::endl;
+  mEmitter->send(message.c_str(), message.size() + 1);
 
-  
   return;
 }
 
@@ -85,12 +89,8 @@ auto Person::sendMessageAll(std::string message) {
   int i = 0;
   while(i < 6) {
     mEmitter->setChannel(i);
-    if (mEmitter->send(message.c_str(), message.size() + 1)) {
-      // std::cout << "Message sent" << std::endl;
-        
-    }else {
-      std::cout << "Failed to send a message :(" << std::endl;
-    }
+    mEmitter->send(message.c_str(), message.size() + 1);
+
     i++;
   }
   return;
@@ -99,21 +99,21 @@ auto Person::sendMessageAll(std::string message) {
 std::string Person::getMessage() {
   mReceiver->setChannel(mChannel);
   mReceiver->enable(mTimeStep);
-  std::string message;
+  std::string message = "";
   while (step(mTimeStep) != -1) {
     if (mReceiver->getQueueLength() > 0) {
       message =
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
-      // std::cout << "I have recevied: " << message << std::endl;
+
       if (message != "") {
-        std::cout << "I have recieved" << message << std::endl;
+
         return message;
       }
     }
-    return message;
+   
   }
-
+  return message;
   
 }
 void Person::autoMode() {
@@ -122,52 +122,67 @@ void Person::autoMode() {
 
 class Staff : public Person {
   public:
-  Staff(int forward, int left, int right, int channel, std::vector <std::string> menu) : Person(forward, left, right, channel) {
+  Staff(int forward, int left, int right, int channel, std::vector <std::string> menu, double money) : Person(forward, left, right, channel) {
     mOrderPositionX = 0.8; 
     mOrderPositionZ = 0.375;
     mPickUpPositionX = 0.8;
     mPickUpPositionZ = -0.375;
-    mStepRatio = 0.0028;
+    mStepRatio = 0.0027;
     mMenu = menu;
+    mStartX = 1.385;
+    mStartZ = 0.875;
+    mMoney = money;
   }
   void autoMode();
   void rotate90(std::string direction);
   bool inMenu(std::string order, double & price, double & time);
+  void showAccount(double money);
   private:
   std::vector<std::string> mMenu;
+  std::vector<std::string> mAccount;
 
 };
 
 class Customer : public Person {
   public:
-  Customer(int forward, int left, int right, int channel, double money) : Person(forward, left, right, channel) {
+  Customer(int forward, int left, int right, int channel, double money, double startX, double startZ) : Person(forward, left, right, channel) {
     mOrderPositionX = 0.45; 
     mOrderPositionZ = 0.375;
     mPickUpPositionX = 0.45;
     mPickUpPositionZ = -0.375;
-    mStepRatio = 0.00265;
+    mStepRatio = 0.00255;
+    mStartX = startX;
+    mStartZ = startZ;
     mMoney = money;
   }
   void rotate90(std::string direction);
   void autoMode();
+  void showAccount();
   private:
-  double mMoney;
+
 };
+
+void Customer::showAccount() {
+  std::cout << "Customer " << mChannel << ": My current balance is " << mMoney << " dollars" <<std::endl;
+  return;
+}
 
 bool Staff::inMenu(std::string order, double & price, double & time) {
   std::string time_str;
   std::string price_str;
   std::string item;
   for (std::vector<std::string>::const_iterator iter = mMenu.cbegin(); iter!=mMenu.cend(); ++iter) {
-    if(iter->find(order)) {
-      std::stringstream menuItem (*iter); 
-      std::getline(menuItem, item, ',');
-      std::getline(menuItem, time_str, ',');
-      std::getline(menuItem, price_str, ',');
-      price = std::stod(price_str);
-      time = std::stod(time_str);
+    
+    std::stringstream menuItem (*iter); 
+    std::getline(menuItem, item, ',');
+    std::getline(menuItem, time_str, ',');
+    std::getline(menuItem, price_str, ',');
+    price = std::stod(price_str);
+    time = std::stod(time_str);
+    if(item == order) {
       return true;
     }
+    
   }
   return false;
 }
@@ -226,15 +241,15 @@ void Customer::autoMode() {
   mLeftMotor->setPosition(INFINITY);
   mRightMotor->setPosition(INFINITY);
 
-  
   double translationX = std::stod(getMessage());
   double translationZ = std::stod(getMessage());
   double rotation = std::stod(getMessage());
-  std::cout << getMessage() << "customer" << std::endl;
   double distanceX = (mOrderPositionX - translationX);
   double distanceZ = (mOrderPositionZ - translationZ);
 
+  std::cout << "Customer " << mChannel << ": I am heading to order counter" << std::endl;
   navigate(distanceX, distanceZ, rotation);
+  std::cout << "Customer " << mChannel << ": Hi Staff, I want to order "<< order << std::endl;
   sendMessage(order, 5); 
 
   
@@ -248,27 +263,37 @@ void Customer::autoMode() {
   } else if (mChannel == 4) {
     sendMessage("Pos4", 0);
   } 
-  
-  
-  getMessage(); 
   double translationXF = std::stod(getMessage());
   double translationZF = std::stod(getMessage());
   double rotationF = std::stod(getMessage());
-  navigate(translationXF -translationX, translationZF- translationZ, rotationF);
-  rotate90("C");
   std::string message = getMessage();
   if (message == "Not in menu") {
-    std::cout << "Done" << std::endl;
+    std::cout << "Customer " << mChannel << ": I am returning to starting point" << std::endl;
+    navigate(translationXF -mStartX, translationZF- mStartZ, rotationF);
+    rotate90("C");
+    sendMessage("exit", 0);
     return;
   } 
-  std::cout << message << " message" << std::endl;
+
+
+  
+  
+  
+  
   double price = std::stod(message);
   if (price > mMoney) {
     sendMessage("Oops", 5);
     std::cout << "Customer " << mChannel << ": Hi Staff, oops, I can't afford it" << std::endl;
+    std::cout << "Customer " << mChannel << ": I am returning to starting point" << std::endl;
+    navigate(translationXF -mStartX, translationZF- mStartZ, rotationF);
+    rotate90("C");
+    sendMessage("exit", 0);
     return;
   } 
-
+  std::cout << "Customer " << mChannel << ": Hi Staff, I will buy it" << std::endl;
+  navigate(translationXF -mStartX, translationZF- mStartZ, rotationF);
+  rotate90("C");
+  
   mMoney -= price;
   sendMessage("Y", 5);
   getMessage(); // Returns ready but is not useful to know that information.
@@ -276,16 +301,16 @@ void Customer::autoMode() {
   translationXF = std::stod(getMessage());
   translationZF = std::stod(getMessage());
   rotationF = std::stod(getMessage());
-  navigate(translationXF - mPickUpPositionX, translationZF- mPickUpPositionZ, rotationF);
+  navigate(mPickUpPositionX - translationXF, mPickUpPositionZ - translationZF, rotationF);
   sendMessage("Thanks", 5);
-  std::cout << "Customer " << mChannel << ": I got my Cappuccino" << std::endl;
-  std::cout << "Customer " << mChannel << "I am returning to starting point" << std::endl;
+  std::cout << "Customer " << mChannel << ": I got my " << order << std::endl;
+  std::cout << "Customer " << mChannel << ": I am returning to starting point" << std::endl;
   translationXF = std::stod(getMessage());
   translationZF = std::stod(getMessage());
   rotationF = std::stod(getMessage());
-  navigate(translationXF -translationX, translationZF- translationZ, rotationF);
-  
-
+  navigate(translationXF -mStartX, translationZF- mStartZ, rotationF);
+  rotate90("C");
+  sendMessage("exit", 0);
   return;
 }
 
@@ -351,7 +376,7 @@ void Person::navigate(double distanceX, double distanceZ, double rotation) {
 }
 void Person::move(double distance) {
   int stop = distance/mStepRatio;
-  std::cout << stop << std::endl;
+  
   int i = 0;
   mLeftMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
   mRightMotor->setVelocity(0.5*MAX_MOTOR_SPEED);
@@ -366,8 +391,37 @@ void Person::move(double distance) {
   return;
 }
 
+void Staff::showAccount(double money) {
+  std::string filename {"Account.csv"};
+  // Write to file
+  std::ofstream ofst {filename}; // default mode is
+  //std::ios::out | std::ios::trunc
+
+  if (!ofst) {
+  std::cerr << "error: open file for output failed!\n";
+  return;
+  }
+  ofst << std::setw(20) << "Time(s)" 
+    << std::setw(20) << "Item" 
+    << std::setw(20) << "Customer" 
+    << std::setw(20) << "Account Balance($)" << '\n'; 
+  ofst << std::setw(20) << "0" 
+    << std::setw(20) << " " 
+    << std::setw(20) << " " 
+    << std::setw(20) << std::to_string(money) << '\n';
+  int i = 1;
+  for (std::vector<std::string>::const_iterator iter = mAccount.cbegin(); iter!=mAccount.cend(); ++iter) {
+        ofst << std::setw(20) << *iter;
+        if (i % 4 == 0) {
+          ofst << '\n';
+        }
+        i++;
+    }
+  ofst.close();
+  return;
+}
+
 void Staff::autoMode() {
-  std::cout << "staff auto" << std::endl;
   double translationX = std::stod(getMessage());
   double translationZ = std::stod(getMessage());
   double rotation = std::stod(getMessage());
@@ -384,22 +438,17 @@ void Staff::autoMode() {
   } else if (channel == "Pos4") {
     iChannel = 4;
   }
-  std:: cout << channel << "channel" << std::endl;
-  std::cout << getMessage() << "staff" << std::endl;
-  std::string message;
-  while(step(mTimeStep) != -1) {
-    message = getMessage();
-    if(message != "") {
-      std::cout << message << std::endl; 
-      break;
-    }
-  }
+
+
+  std::string message = getMessage();
+  
 
 
 
   double distanceX = (mOrderPositionX - translationX);
 
   double distanceZ = (mOrderPositionZ - translationZ);
+  std::cout << "Staff: I am heading to order counter" << std::endl;
   navigate(distanceX, distanceZ, rotation);
 
   double translationXF;
@@ -407,72 +456,72 @@ void Staff::autoMode() {
   double rotationF;
   double price;
   double time;
-
+  getMessage();
+  getMessage();
+  getMessage();
+  getMessage();
   if(!inMenu(message, price, time)) {
+    std::cout << "Staff: Hi Customer " << iChannel << ", oh no, we don't have " << message <<  " in our menu" << std::endl;
     sendMessage("Not in menu", iChannel); 
-    
+    sendMessage(channel, 0);
     translationXF = std::stod(getMessage());
     translationZF = std::stod(getMessage());
     rotationF = std::stod(getMessage());
     getMessage();
-    std::cout << "moving back to start" << translationXF << translationZF << rotationF << std::endl;
-    navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+    
+    navigate(translationXF - mStartX, translationZF - mStartZ, rotationF);
+    rotate90("CC");
     return;
   }
-  std::cout << "Staff: Hi Customer " << iChannel << ", the price for " << message <<  " is " << price <<"." << std::endl;
+  std::cout << "Staff: Hi Customer " << iChannel << ", the price for " << message <<  " is " << price <<" dollars" << std::endl;
   auto price_str = std::to_string(price);
   sendMessage(price_str, iChannel);
-  getMessage();
-  getMessage();
-  getMessage();
+
   auto answer = getMessage();
-  std::cout << answer << "answer" << std::endl;
+
+
   if(answer == "Oops") {
-    int i = 0;
-    while(step(mTimeStep) != -1 && i < 30) {
-      i++;
-    }
     translationXF = std::stod(getMessage());
     translationZF = std::stod(getMessage());
     rotationF = std::stod(getMessage());
-    std::cout << "moving back to start" << translationXF << translationZF << rotationF << std::endl;
-    navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+    navigate(translationXF - mStartX, translationZF - mStartZ, rotationF);
+    rotate90("CC");
     return;
   }
-  int total_timeSteps = 1000/32*time;
+  mMoney += price;
+  mAccount.push_back(std::to_string(getTime()));
+  mAccount.push_back(message);
+  mAccount.push_back(std::to_string(iChannel));
+  mAccount.push_back(std::to_string(mMoney));
+  int total_timeSteps = 1000.0/32.0*time;
+
   int counter = 0;
-  while(counter < total_timeSteps){
+  while(step(mTimeStep) != -1 && counter < total_timeSteps){
     counter++;
   }
+
   std::cout << "Staff: Hi Customer " << iChannel << ", your " << message << " is ready, please proceed to pickup counter" << std::endl;
   sendMessage("Ready", iChannel);
   sendMessage(channel, 0);
-  std::cout << getMessage() << "message" << std::endl; 
   translationXF = std::stod(getMessage());
   translationZF = std::stod(getMessage());
   rotationF = std::stod(getMessage());
+  std::cout << "Staff: I am heading to order counter" << std::endl;
   navigate(translationXF - mPickUpPositionX, translationZF - mPickUpPositionZ, rotationF);
-  getMessage();
+  getMessage();// Will be Pos(number)
+  getMessage(); // Will be Thanks.
   sendMessage(channel, 0);
   translationXF = std::stod(getMessage());
   translationZF = std::stod(getMessage());
   rotationF = std::stod(getMessage());
-  navigate(translationXF - translationX, translationZF - translationZ, rotationF);
+  getMessage();
+  navigate(translationXF - mStartX, translationZF - mStartZ, rotationF);
 
+  rotate90("CC");
+ 
   return;
 }
-// auto readCSV(std::string filename) {
 
-//   std::ifstream fileInput;
-//   fileInput.open(filename);
-//   std::vector<std::string> fileVector;
-//   std::string temp
-
-//   while (getline(fileInput, temp)) {
-//     fileVector.push_back(temp);
-//   }
-//   return fileVector;
-// }
 
 auto Person::exit() {
   sendMessageAll("exit");
@@ -512,12 +561,8 @@ class Director : public webots::Supervisor {
 auto Director::sendMessage(std::string message, int channel) {
   
   mEmitter->setChannel(channel);
-  if (mEmitter->send(message.c_str(), message.size() + 1)) {
-    return;
-  }
-  std::cout << "Failed to send a message :(" << std::endl;
-  
-  
+  mEmitter->send(message.c_str(), message.size() + 1);
+
   return;
 }
 
@@ -525,26 +570,29 @@ auto Director::sendMessageAll(std::string message) {
   int i = 0;
   while(i < 6) {
     mEmitter->setChannel(i);
-    if (mEmitter->send(message.c_str(), message.size() + 1)) {
-      // std::cout << "Message sent" << std::endl;
-        
-    }
-  std::cout << "Failed to send a message :(" << std::endl;
+    mEmitter->send(message.c_str(), message.size() + 1);
+
     i++;
   }
+  return;
+}
+
+auto Director::exit() {
+  auto message {"exit"};
+  sendMessageAll(message);
   return;
 }
 
 std::string Director::getMessage() {
   mReceiver->setChannel(mChannel);
   mReceiver->enable(mTimeStep);
-  std::string message;
+  std::string message = "";
   while (step(mTimeStep) != -1) {
     if (mReceiver->getQueueLength() > 0) {
       message =
           static_cast<std::string>((static_cast<const char*>(mReceiver->getData())));
       mReceiver->nextPacket();  // Pops queue.
-      // std::cout << "I have recevied: " << message << std::endl;
+
       if(message != "") {
         return message;
       }
@@ -554,57 +602,40 @@ std::string Director::getMessage() {
 }
 
 auto Director::autoMode() {
-  // webots::Node *staff {getFromDef("STAFF")};
-  // if (!staff) {
-  //   throw std::runtime_error("Failed to get STAFF!");
-  // }
-  // webots::Node *customer1{getFromDef("CUSTOMER1")};
-  // if (!staff) {
-  //   throw std::runtime_error("Failed to get CUSTOMER1!");
-  // }
-  // webots::Node *customer2{getFromDef("CUSTOMER2")};
-  // if (!staff) {
-  //   throw std::runtime_error("Failed to get CUSTOMER2!");
-  // }
-  // webots::Node *customer3{getFromDef("CUSTOMER3")};
-  // if (!staff) {
-  //   throw std::runtime_error("Failed to get CUSTOMER3!");
-  // }
-  // webots::Node *customer4{getFromDef("CUSTOMER4")};
-  // if (!staff) {
-  //   throw std::runtime_error("Failed to get CUSTOMER4!");
-  // }
-  // webots::Field *translationFieldS {staff->getField("translation")};
-  // webots::Field *translationFieldC1 {customer1->getField("translation")};
-  // webots::Field *translationFieldC2 {customer2->getField("translation")};
-  // webots::Field *translationFieldC3 {customer3->getField("translation")};
-  // webots::Field *translationFieldC4 {customer4->getField("translation")};
-  // const double *translationValuesS {translationFieldS->getSFVec3f()};
-  // const double *translationValuesC1 {translationFieldC1->getSFVec3f()};
-  // const double *translationValuesC2 {translationFieldC2->getSFVec3f()};
-  // const double *translationValuesC3 {translationFieldC3->getSFVec3f()};
-  // const double *translationValuesC4 {translationFieldC4->getSFVec3f()};
   
-  
-
+  double time = getTime();
   for (auto i = 0; i < mOrders.size() -1; i += 2) {
     if (mOrders.at(i) == "1") {
       sendMessage("A", 1);
       sendMessage("A", 5);
       sendMessage(mOrders.at(i+1), 1);
       sendPosition(1);
+      idle();
 
     } else if (mOrders.at(i) == "2") {
+
       sendMessage("A", 2);
+      sendMessage("A", 5);
       sendMessage(mOrders.at(i+1), 2);
+      sendPosition(2);
+      idle();
     } else if (mOrders.at(i) == "3") {
       sendMessage("A", 3);
+      sendMessage("A", 5);
       sendMessage(mOrders.at(i+1), 3);
+      sendPosition(3);
+      idle();
     } else if (mOrders.at(i) == "4") {
       sendMessage("A", 4);
+      sendMessage("A", 5);
       sendMessage(mOrders.at(i+1), 4);
+      sendPosition(4);
+      idle();
     }
   }
+  sendMessageAll("EA");
+  double totalTime = getTime() - time;
+  std::cout << "Director: The whole auto mode takes up " << totalTime << "s" << std::endl;
   return;
 }
 
@@ -671,31 +702,7 @@ void Director::sendPosition(int channel) {
   sendMessage(tempR, 5);
   sendMessage(str_channel, 5);
 
-  idle();
-    
-    
   
-  return;
-}
-
-  // auto i = 0;
-  // while(i < 5) {
-  //   mEmitter->setChannel(i);
-  //   std::string message = "A";
-  //   if (mEmitter->send(message.c_str(), message.size() + 1)) {
-  //       std::cout << "Automode robot" << i << "initiated" << std::endl;
-        
-  //   }
-  //   std::cout << "Failed to send a message :(" << std::endl;
-  //   i++;
-  // }
-  // readCSV("../../starting.csv");
-
-
-
-auto Director::exit() {
-  auto message {"exit"};
-  sendMessageAll(message);
   return;
 }
 
@@ -772,11 +779,11 @@ void Director::remoteControl() {
 void Director::menu() {
   mKeyboard->enable(mTimeStep);
   // Printing initial setup menu.
-  std::cout << "This is a simulation for MTRN2500 Cafe." << std::endl;
-  std::cout << "Press [I] to reprint the commands." << std::endl;
-  std::cout << "Press [R] to remote control a Supervisor." << std::endl;
-  std::cout << "Press [A] to enter the auto mode." << std::endl;
-  std::cout << "Press [Q] to quit all controllers." << std::endl;
+  std::cout << "Director: This is a simulation for MTRN2500 Cafe." << std::endl;
+  std::cout << "Director: Press [I] to reprint the commands." << std::endl;
+  std::cout << "Director: Press [R] to remote control a Supervisor." << std::endl;
+  std::cout << "Director: Press [A] to enter the auto mode." << std::endl;
+  std::cout << "Director: Press [Q] to quit all controllers." << std::endl;
   // Cooldown counter so it doesn't print the command out multiple times.
   auto i = 0;
   while (step(mTimeStep) != -1) {
@@ -787,29 +794,31 @@ void Director::menu() {
       switch(key) {
         // Case for pressing i or I.
         case 73 : case 65609 :
-          std::cout << "This is a simulation for MTRN2500 Cafe.\n";
-          std::cout << "Press [I] to reprint the commands.\n";
-          std::cout << "Press [R] to remote control a Supervisor.\n";
-          std::cout << "Press [A] to enter the auto mode.\n";
-          std::cout << "Press [Q] to quit all controllers." << std::endl;
+          std::cout << "Director: This is a simulation for MTRN2500 Cafe.\n";
+          std::cout << "Director: Press [I] to reprint the commands.\n";
+          std::cout << "Director: Press [R] to remote control a Supervisor.\n";
+          std::cout << "Director: Press [A] to enter the auto mode.\n";
+          std::cout << "Director: Press [Q] to quit all controllers." << std::endl;
           break;
         // Case for pressing r or R.
         case 82 : case 65618 :
-          std::cout << "Entering remote control mode" << std::endl;
+          std::cout << "Director: Entering remote control mode" << std::endl;
           remoteControl();
           return;
         // Case for pressing a or A.
         case 65 : case 65601 :
-          std::cout << "Entering auto mode." << std::endl;
+          std::cout << "Director: Auto mode start" << std::endl;
           autoMode();
-          break;
+          exit();
+          return;
+          
         // Case for pressing q or Q.
         case 81 : case 65617 :
-          std::cout << "Quiting" << std::endl;
+          std::cout << "Director: Quiting" << std::endl;
           exit();
           return;
         default :
-          std::cout << "Command not found." << std::endl;
+          std::cout << "Director: Command not found." << std::endl;
           break;
       }
     }
@@ -821,7 +830,7 @@ void Director::menu() {
 void Person::RemoteMode(int timeStep) {
   double velocity = 0.5*MAX_MOTOR_SPEED;
   int cooldown = 5;
-  std::cout << "entering remote" << std::endl;
+  std::cout << "Director: Remote mode start" << std::endl;
 
   mLeftMotor->setPosition(INFINITY);
   mRightMotor->setPosition(INFINITY);
@@ -854,7 +863,7 @@ void Person::RemoteMode(int timeStep) {
         // Increase Speed.
         case 61 :
           if(velocity < MAX_MOTOR_SPEED && cooldown >= 5) {
-            std::cout << "increasing speed" << std::endl;
+            std::cout << "Increasing speed: ";
             velocity += 0.1*MAX_MOTOR_SPEED;
             std::cout << velocity << std::endl;
             mLeftMotor->setVelocity(velocity);
@@ -865,7 +874,7 @@ void Person::RemoteMode(int timeStep) {
         // Decrease Speed.
         case 45 :
           if(velocity > 0 && cooldown >= 5) {
-            std::cout << "decreasing speed" << std::endl;
+            std::cout << "Decreasing speed: ";
             velocity -= 0.1*MAX_MOTOR_SPEED;
             std::cout << velocity << std::endl;
             mLeftMotor->setVelocity(velocity);

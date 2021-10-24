@@ -37,10 +37,10 @@ int main(int argc, char **argv) {
       money = std::stod(temp);
     }
   }
-  std::cout << money << "money" << std::endl;
-  auto customer1 = Customer(87, 65, 68, 1, money);
 
-  int timeStep = (int)customer1.getBasicTimeStep();
+  auto customer1 = Customer(87, 65, 68, 1, money, -1.395, 0.86);
+  bool wasAuto {false};
+  int timeStep {(int)customer1.getBasicTimeStep()};
 
 
   while (customer1.step(timeStep) != -1) {
@@ -51,12 +51,16 @@ int main(int argc, char **argv) {
         customer1.RemoteMode(timeStep);
          break;
         } else if (message == "exit") {
-          return 0;
+          break;
         } else if (message == "A") {
           customer1.autoMode();
+          wasAuto = true;
         }
 
   };
+  if (wasAuto) {
+    customer1.showAccount();
+  }
 
 
 

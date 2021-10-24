@@ -37,9 +37,9 @@ int main(int argc, char **argv) {
       money = std::stod(temp);
     }
   }
-  std::cout << money << "money" << std::endl;
-  auto customer3 = Customer(87, 65, 68, 3, money);
 
+  auto customer3 = Customer(87, 65, 68, 3, money, -1.395, -0.14);
+  bool wasAuto = false;
   int timeStep = (int)customer3.getBasicTimeStep();
 
   auto receiver = static_cast<webots::Receiver*>(customer3.getReceiver("receiver"));
@@ -53,12 +53,16 @@ int main(int argc, char **argv) {
         customer3.RemoteMode(timeStep);
          break;
         } else if (message == "exit") {
-          return 0;
+          break;
         } else if (message == "A") {
           customer3.autoMode();
+          wasAuto = true;
         }
 
   };
+  if (wasAuto) {
+    customer3.showAccount();
+  }
 
 
 
