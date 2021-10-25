@@ -19,17 +19,22 @@
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 
+// From Tute.
+std::ifstream read(std::string filename) {
+    std::ifstream in{};
+    
+    in.open(filename, std::ios::in);
+    if (!in) {
+        std::cout << "Can not open file." << std::endl;
+    }
+    return in;
+}
+
 int main(int argc, char **argv) {
-  // create the Supervisor instance.
+  // Reading orders in.
   
-  std::string filename {"../Order.csv"};
-  std::ifstream input{};
+  auto input {read("../Order.csv")};
 
-
-  input.open(filename, std::ios::in);
-  if (!input) {
-    std::cout << "Can not open file." << std::endl;
-  }
   std::string line;
   getline(input, line);
   std::vector <std::string> orders;

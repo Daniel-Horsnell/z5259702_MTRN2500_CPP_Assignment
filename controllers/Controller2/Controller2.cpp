@@ -18,51 +18,55 @@
 
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
-
-int main(int argc, char **argv) {
-
-  std::string filename {"../Starting.csv"};
-  std::ifstream input{};
-  std::vector <std::string> menu;
-  std::string line;
-  input.open(filename, std::ios::in);
-  if (!input) {
-    std::cout << "Can not open file." << std::endl;
-  }
-  double money;
-  getline(input, line);
-  while(getline(input,line)) {
-    if(line[0] == '2') {
-      int size = line.length();
-      std::string temp = line.substr(2,size);
-      money = std::stod(temp);
+// From Tute.
+std::ifstream read(std::string filename) {
+    std::ifstream in{};
+    
+    in.open(filename, std::ios::in);
+    if (!in) {
+        std::cout << "Can not open file." << std::endl;
     }
-  }
+    return in;
+}
+int main(int argc, char **argv) {
+    // Getting starting money.
+    auto input {read("../Starting.csv")};
+    std::string line;
 
-  auto customer2 = Customer(87, 65, 68, 2, money, -1.395, 0.34);
+    double money {0.0};
+    getline(input, line);
+    while(getline(input,line)) {
+      if(line[0] == '2') {
+        int size = line.length();
+        std::string temp = line.substr(2,size);
+        money = std::stod(temp);
+      }
+    }
 
-  int timeStep = (int)customer2.getBasicTimeStep();
-  bool wasAuto = false;
+    auto customer2 = Customer(87, 65, 68, 2, money, -1.395, 0.34);
 
-  while (customer2.step(timeStep) != -1) {
-      // Queue is not empty.
+    int timeStep = (int)customer2.getBasicTimeStep();
+    bool wasAuto = false;
 
-      std::string message = customer2.getMessage();
-      if(message == "2R") {
-        customer2.RemoteMode();
-         break;
+    while (customer2.step(timeStep) != -1) {
+        // Constantly recieving messages until told to do otherwise.
+
+        std::string message = customer2.getMessage();
+        if(message == "2R") {
+            customer2.RemoteMode();
+            break;
         } else if (message == "exit") {
-          break;
+            break;
         } else if (message == "A") {
-          customer2.autoMode();
-          wasAuto = true;
+            customer2.autoMode();
+            wasAuto = true;
         }
 
-  };
-  if (wasAuto) {
-    customer2.showAccount();
-  }
+    };
+    if (wasAuto) {
+      customer2.showAccount();
+    }
 
 
-  return 0;
+    return 0;
 }
