@@ -145,7 +145,7 @@ void Person::autoMode() {
 
 class Staff : public Person {
     public:
-    Staff(int forward, int left, int right, int channel, std::vector <std::string> menu, double money) : Person(forward, left, right, channel) {
+    Staff(int forward, int left, int right, int channel, std::vector <std::string> & menu, double money) : Person(forward, left, right, channel) {
       mOrderPositionX = 0.8; 
       mOrderPositionZ = 0.375;
       mPickUpPositionX = 0.8;
@@ -526,7 +526,7 @@ auto Person::exit() {
 
 class Director : public webots::Supervisor {
     public:
-    Director(std::vector <std::string> orders) : Supervisor() {
+    Director(std::vector <std::string> & orders) : Supervisor() {
         mTimeStep = getBasicTimeStep();
         mKeyboard = getKeyboard();
         mKeyboard->enable(mTimeStep);
@@ -601,7 +601,7 @@ std::string Director::getMessage() {
 auto Director::autoMode() {
   
     double time = getTime();
-    for (auto i = 0; i < mOrders.size() -1; i += 2) {
+    for (long unsigned int i = 0; i < mOrders.size() -1; i += 2) {
         if (mOrders.at(i) == "1") {
             // Telling staff and customer to enter auto mode and sending their start positions.
             sendMessage("A", 1);
