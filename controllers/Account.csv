@@ -1,0 +1,7 @@
+             Time(s),                Item,            Customer,  Account Balance($)
+                   0,                    ,                    ,            5.000000
+           98.336000,               Latte,                   1,            9.000000,
+          342.560000,           Green Tea,                   2,           12.500000,
+          540.672000,          Cappuccino,                   3,           17.000000,
+          783.520000,               Mocha,                   4,           21.000000,
+         1112.224000,       Hot Chocolate,                   2,           25.500000,
