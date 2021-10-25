@@ -42,15 +42,11 @@ int main(int argc, char **argv) {
   bool wasAuto = false;
   int timeStep = (int)customer3.getBasicTimeStep();
 
-  auto receiver = static_cast<webots::Receiver*>(customer3.getReceiver("receiver"));
-  receiver->enable(timeStep);
-  receiver->setChannel(3);
-
   while (customer3.step(timeStep) != -1) {
     
       std::string message = customer3.getMessage();
       if(message == "3R") {
-        customer3.RemoteMode(timeStep);
+        customer3.RemoteMode();
          break;
         } else if (message == "exit") {
           break;

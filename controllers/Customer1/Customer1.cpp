@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     
     std::string message = customer1.getMessage();
       if(message == "1R") {
-        customer1.RemoteMode(timeStep);
+        customer1.RemoteMode();
          break;
         } else if (message == "exit") {
           break;

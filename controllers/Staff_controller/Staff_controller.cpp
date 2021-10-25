@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     std::string message = staff.getMessage();
 
     if(message == "5R") {
-      staff.RemoteMode(timeStep);
+      staff.RemoteMode();
       break;
     } else if (message == "exit") {
       return 0;

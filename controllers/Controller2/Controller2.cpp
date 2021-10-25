@@ -39,19 +39,17 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto customer2 = Customer(87, 65, 68, 2, money, -1.395, 0.36);
+  auto customer2 = Customer(87, 65, 68, 2, money, -1.395, 0.34);
 
   int timeStep = (int)customer2.getBasicTimeStep();
   bool wasAuto = false;
-  auto receiver = static_cast<webots::Receiver*>(customer2.getReceiver("receiver"));
-  receiver->enable(timeStep);
-  receiver->setChannel(2);
+
   while (customer2.step(timeStep) != -1) {
       // Queue is not empty.
 
       std::string message = customer2.getMessage();
       if(message == "2R") {
-        customer2.RemoteMode(timeStep);
+        customer2.RemoteMode();
          break;
         } else if (message == "exit") {
           break;
